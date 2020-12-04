@@ -15,11 +15,32 @@ module DocumentIndexing where
   instance Show Document where
     show = printFields [show . termFrequency, show . termSet, show . tfidf]
 
-
+  --this is the thing that we'll need to parallelize; figure out how to do parmap here
+  singleThreadedReadDocuments :: [String] -> [Document]
+  singleThreadedReadDocuments docs = map readDocument docs
+  --basic text->document parsing (note, tfidf has to be added as a second step)
   readDocument :: String -> Document
   readDocument text = Document wordMap (Map.keysSet wordMap) Map.empty
       where
           wordMap = Map.fromList (countTuples text)
+
+  updateDocumentsWithTfIdfScore :: [Document] -> [Document]
+  updateDocumentsWithTfIdfScore _ = error "porfavor coda me"
+
+
+  --helper functions for tfidf generation
+  getGlobalDocumentFrequency :: [Document] -> Set.Set String-> Map.Map String Int
+  getGlobalDocumentFrequency [] wordSet = Map.fromSet (\x -> 0) wordSet
+  getGlobalDocumentFrequency (x:xs) wordSet = Set.foldl updateWithWord (getGlobalDocumentFrequency xs wordSet) (termSet x)
+
+  updateWithWord :: Map.Map String Int -> String -> Map.Map String Int
+  updateWithWord wordMap word = Map.adjust (+1) word wordMap
+
+  getAllTheWords :: [Document] -> Set.Set String
+  getAllTheWords [] = Set.empty
+  getAllTheWords (x:xs) = Set.union (termSet x) (getAllTheWords xs)
+
+
   -- the below will create a set of tuples where the first element is the word, and the second is how many times it shows up
   countTuples :: String -> [(String, Int)]
   countTuples text = countWords (sort (tokenizeAndNormalize text)) []
