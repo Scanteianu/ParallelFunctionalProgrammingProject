@@ -24,8 +24,12 @@ module DocumentIndexing where
       where
           wordMap = Map.fromList (countTuples text)
 
-  updateDocumentsWithTfIdfScore :: [Document] -> [Document]
-  updateDocumentsWithTfIdfScore _ = error "porfavor coda me"
+  updateDocumentsWithTfIdfScore :: [Document] -> Map.Map String Int -> [Document]
+  updateDocumentsWithTfIdfScore docs globTermFreq = map (`updateDocWithTfIdf` globTermFreq) docs
+
+  updateDocWithTfIdf :: Document -> Map.Map String Int -> Document
+  updateDocWithTfIdf doc wordMap = Document (termFrequency doc) (termSet doc) (Map.intersectionWith (\x y ->(fromIntegral x)/(fromIntegral y)) (termFrequency doc) wordMap)
+
 
 
   --helper functions for tfidf generation
