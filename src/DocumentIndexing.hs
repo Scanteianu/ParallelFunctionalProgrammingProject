@@ -1,9 +1,25 @@
 module DocumentIndexing where
   import Data.Char
   import Data.List
+  import qualified Data.Map.Strict as Map
+  import qualified Data.Set as Set
+  -- code is stolen liberally from my hws -ds
+
+  -- All the information we need to know about a given document
+  data Document = Document { termFrequency :: Map.Map String Int , termSet :: Set.Set String , tfidf::Map.Map String Double }
+
+  --theft from hw
+  printFields :: [a -> String] -> a -> String
+  printFields functs object = intercalate " " $ map ($ object) functs
+
+  instance Show Document where
+    show = printFields [show . termFrequency, show . termSet, show . tfidf]
 
 
-
+  readDocument :: String -> Document
+  readDocument text = Document wordMap (Map.keysSet wordMap) Map.empty
+      where
+          wordMap = Map.fromList (countTuples text)
   -- the below will create a set of tuples where the first element is the word, and the second is how many times it shows up
   countTuples :: String -> [(String, Int)]
   countTuples text = countWords (sort (tokenizeAndNormalize text)) []
