@@ -5,6 +5,8 @@ module DocumentIndexing where
   import qualified Data.Set as Set
   -- code is stolen liberally from my hws -ds
 
+  --high level pipeline illustration: read files into strings -> turn strings into docs (parallel) -> get all words from doc collection (singlethreaded for now) -> compute tfidf map for each document (parallel)->ready to search!
+
   -- All the information we need to know about a given document
   data Document = Document { termFrequency :: Map.Map String Int , termSet :: Set.Set String , tfidf::Map.Map String Double }
 
@@ -23,20 +25,18 @@ module DocumentIndexing where
   readDocument text = Document wordMap (Map.keysSet wordMap) Map.empty
       where
           wordMap = Map.fromList (countTuples text)
-
+  --this thing can also be parallelized
   updateDocumentsWithTfIdfScore :: [Document] -> Map.Map String Int -> [Document]
   updateDocumentsWithTfIdfScore docs globTermFreq = map (`updateDocWithTfIdf` globTermFreq) docs
 
+  --individual doc tfidf computation
   updateDocWithTfIdf :: Document -> Map.Map String Int -> Document
   updateDocWithTfIdf doc wordMap = Document (termFrequency doc) (termSet doc) (Map.intersectionWith (\x y ->(fromIntegral x)/(fromIntegral y)) (termFrequency doc) wordMap)
-
-
-
-  --helper functions for tfidf generation
+  -- this is the
   getGlobalDocumentFrequency :: [Document] -> Set.Set String-> Map.Map String Int
   getGlobalDocumentFrequency [] wordSet = Map.fromSet (\x -> 0) wordSet
   getGlobalDocumentFrequency (x:xs) wordSet = Set.foldl updateWithWord (getGlobalDocumentFrequency xs wordSet) (termSet x)
-
+  --helper functions below here
   updateWithWord :: Map.Map String Int -> String -> Map.Map String Int
   updateWithWord wordMap word = Map.adjust (+1) word wordMap
 
