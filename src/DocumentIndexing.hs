@@ -36,6 +36,9 @@ module DocumentIndexing where
   getGlobalDocumentFrequency :: [Document] -> Set.Set String-> Map.Map String Int
   getGlobalDocumentFrequency [] wordSet = Map.fromSet (\x -> 0) wordSet
   getGlobalDocumentFrequency (x:xs) wordSet = Set.foldl updateWithWord (getGlobalDocumentFrequency xs wordSet) (termSet x)
+
+  sortDocsByScore ::Ord a => [(Document, a)]->[(Document, a)]
+  sortDocsByScore scoredDocs = sortBy (\(_,a) (_,b) -> compare b a) scoredDocs
   --helper functions below here
   updateWithWord :: Map.Map String Int -> String -> Map.Map String Int
   updateWithWord wordMap word = Map.adjust (+1) word wordMap

@@ -11,3 +11,4 @@ testUWW =  updateWithWord testGlobFreqBC "hello"
 scratchGlobFreq = Set.foldl updateWithWord testGlobFreqBC (Set.fromList ["hello","foobar"])
 testGlobFreq = getGlobalDocumentFrequency testStRead testAllWords
 testFullIndex = updateDocumentsWithTfIdfScore testStRead testGlobFreq
+testScores = zip testFullIndex [1..10]
