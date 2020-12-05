@@ -13,6 +13,9 @@ import qualified Data.List as List
 $ stack ghc -- --make -Wall -O TfidfSingle.hs 
 $ ./TfidfSingle <files-path> <search-phase>
 
+-- Test the updated the docs with tfidf 
+$./TfidfSingle "../SampleTestFiles/" "I love cat dog bird"
+[fromList [("cat",1),("i",1),("love",1)] fromList ["cat","i","love"] fromList [("cat",0.5),("i",0.3333333333333333),("love",0.3333333333333333)],fromList [("and",1),("birds",1),("cat",1),("i",1),("love",1)] fromList ["and","birds","cat","i","love"] fromList [("cat",0.5),("i",0.3333333333333333),("love",0.3333333333333333)],fromList [("dog",1),("i",1),("love",1)] fromList ["dog","i","love"] fromList [("dog",1.0),("i",0.3333333333333333),("love",0.3333333333333333)]]
 -}
 
 
@@ -22,6 +25,9 @@ import DocumentIndexing
 import System.Exit(exitFailure)
 import System.FilePath ((</>))  
 import Data.Char
+import Data.Set as Set
+import Prelude 
+
 
 main :: IO ()
 main = do 
@@ -45,12 +51,13 @@ main = do
         docs <- readFilesToDocuments files 
 
         -- Get all the search words 
-        let ws =  map sanitizeWord $ words $ args !! 1  
+        let searchWordsSet =  Set.fromList $ Prelude.map sanitizeWord $ words $ args !! 1  
 
-        print ws 
+        -- Update the tfidf 
+        let docsWithTfidf =  updateDocumentsWithTfIdfScore docs $ getGlobalDocumentFrequency docs searchWordsSet
 
+        print docsWithTfidf 
 
-        
 
 
 checkInputErrors :: [String] -> IO Int 
@@ -59,7 +66,7 @@ checkInputErrors args
     | not (validateSearchPhase (args !! 1)) = return 2
     | otherwise = do 
         files <- getDirectoryFiles (head args)
-        if null files
+        if length files == 0
             then return 3
             else return 0
 
@@ -73,8 +80,8 @@ validateSearchPhase (x : xs)
 -- A function to get a list of all fils in a directory 
 getDirectoryFiles :: String -> IO [FilePath] 
 getDirectoryFiles dir = do 
-    files <- filter (\x -> x /= "." && x /= "..") <$>  getDirectoryContents dir
-    return $ map (dir </>) files
+    files <- Prelude.filter (\x -> x /= "." && x /= "..") <$>  getDirectoryContents dir
+    return $ Prelude.map (dir </>) files
 
 -- A function to read all files into Documents 
 readFilesToDocuments ::[FilePath] -> IO [Document]
@@ -86,7 +93,6 @@ readFilesToDocuments files = sequence $ helperFunc files
                 readFileToString filePath = do 
                     fileContent <- readFile filePath
                     return $ readDocument fileContent
-
 
 
 
