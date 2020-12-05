@@ -3,6 +3,7 @@ module DocumentIndexing where
   import Data.List
   import qualified Data.Map.Strict as Map
   import qualified Data.Set as Set
+  import Data.Maybe
   -- code is stolen liberally from my hws -ds
 
   --high level pipeline illustration: read files into strings -> turn strings into docs (parallel) -> get all words from doc collection (singlethreaded for now) -> compute tfidf map for each document (parallel)->ready to search!
@@ -17,6 +18,19 @@ module DocumentIndexing where
   instance Show Document where
     show = printFields [show . text, show . termFrequency, show . termSet, show . tfidf]
 
+  --user friendly output
+  simplifyOutput :: [(Document,Double)] -> [(String, Double)]
+  simplifyOutput inputs = [(text a, b)|(a,b)<-inputs]
+
+  --this is the search function - input is a string of space separated keywords and the list of docs, output is the docs sorted by score and scores, in tuples
+  -- yet again, the map thing here can become parallel
+  searchAndSort:: String -> [Document] -> [(Document,Double)]
+  searchAndSort keywords docs = sortDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs)
+  docScore :: [String] -> Document -> (Document, Double)
+  docScore keywords doc = (doc, foldl (+) 0 [keywordScore x doc | x <- keywords])
+
+  keywordScore :: String -> Document -> Double
+  keywordScore kw doc = fromMaybe 0 (Map.lookup kw (tfidf doc)) --https://hoogle.haskell.org/?hoogle=fromMaybe
   --this is the thing that we'll need to parallelize; figure out how to do parmap here
   singleThreadedReadDocuments :: [String] -> [Document]
   singleThreadedReadDocuments docs = map readDocument docs
@@ -32,7 +46,8 @@ module DocumentIndexing where
   --individual doc tfidf computation
   updateDocWithTfIdf :: Document -> Map.Map String Int -> Document
   updateDocWithTfIdf doc wordMap = Document (text doc) (termFrequency doc) (termSet doc) (Map.intersectionWith (\x y ->(fromIntegral x)/(fromIntegral y)) (termFrequency doc) wordMap)
-  -- this is the
+
+  -- this is the thing that gets the global count of docs each word appears in
   getGlobalDocumentFrequency :: [Document] -> Set.Set String-> Map.Map String Int
   getGlobalDocumentFrequency [] wordSet = Map.fromSet (\x -> 0) wordSet
   getGlobalDocumentFrequency (x:xs) wordSet = Set.foldl updateWithWord (getGlobalDocumentFrequency xs wordSet) (termSet x)
