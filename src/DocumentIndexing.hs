@@ -36,9 +36,9 @@ module DocumentIndexing where
   singleThreadedReadDocuments docs = map readDocument docs
   --basic text->document parsing (note, tfidf has to be added as a second step)
   readDocument :: String -> Document
-  readDocument text = Document text wordMap (Map.keysSet wordMap) Map.empty
+  readDocument textString = Document textString wordMap (Map.keysSet wordMap) Map.empty
       where
-          wordMap = Map.fromList (countTuples text)
+          wordMap = Map.fromList (countTuples textString)
   --this thing can also be parallelized
   updateDocumentsWithTfIdfScore :: [Document] -> Map.Map String Int -> [Document]
   updateDocumentsWithTfIdfScore docs globTermFreq = map (`updateDocWithTfIdf` globTermFreq) docs
@@ -49,7 +49,7 @@ module DocumentIndexing where
 
   -- this is the thing that gets the global count of docs each word appears in
   getGlobalDocumentFrequency :: [Document] -> Set.Set String-> Map.Map String Int
-  getGlobalDocumentFrequency [] wordSet = Map.fromSet (\x -> 0) wordSet
+  getGlobalDocumentFrequency [] wordSet = Map.fromSet (\_ -> 0) wordSet
   getGlobalDocumentFrequency (x:xs) wordSet = Set.foldl updateWithWord (getGlobalDocumentFrequency xs wordSet) (termSet x)
 
   sortDocsByScore ::Ord a => [(Document, a)]->[(Document, a)]
@@ -65,7 +65,7 @@ module DocumentIndexing where
 
   -- the below will create a set of tuples where the first element is the word, and the second is how many times it shows up
   countTuples :: String -> [(String, Int)]
-  countTuples text = countWords (sort (tokenizeAndNormalize text)) []
+  countTuples textString = countWords (sort (tokenizeAndNormalize textString)) []
 
   countWords :: [String]->[(String,Int)] -> [(String,Int)]
   countWords a b
@@ -81,14 +81,14 @@ module DocumentIndexing where
   tokenizeAndNormalize doc = splitString doc ""
 
   splitString :: String -> String -> [String]
-  splitString text current
-      | text == "" && current =="" =[]
-      | text =="" && (sanitizeWord current)=="" = []
-      | text =="" = [current]
-      | isSpace (head text) && current=="" = splitString (tail text) current
-      | isSpace (head text) && (sanitizeWord current)=="" = splitString (tail text) ""
-      | isSpace (head text) = sanitizeWord(current) : (splitString (tail text) "")
-      | otherwise = splitString (tail text) (current++[(head text)])
+  splitString textString current
+      | textString == "" && current =="" =[]
+      | textString =="" && (sanitizeWord current)=="" = []
+      | textString =="" = [current]
+      | isSpace (head textString) && current=="" = splitString (tail textString) current
+      | isSpace (head textString) && (sanitizeWord current)=="" = splitString (tail textString) ""
+      | isSpace (head textString) = sanitizeWord(current) : (splitString (tail textString) "")
+      | otherwise = splitString (tail textString) (current++[(head textString)])
 
   sanitizeWord:: String -> String
   sanitizeWord word = map toLower (filter isLetter word)
