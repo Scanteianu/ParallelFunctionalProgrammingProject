@@ -7,12 +7,9 @@ Usage: TfidfSingle -f <filesname> <search-phase> or  TfidfSingle -d <files-path>
 "-d" flag reads each file of a directory into a Document. 
 "-f" flag reads each line of a file into a Document. 
 
--- Test the updated the docs with tfidf 
-$ ./TfidfSingle -d "../SampleTestFiles/" "I love cat dog bird"
-[fromList [("cat",1),("i",1),("love",1)] fromList ["cat","i","love"] fromList [("cat",0.5),("i",0.3333333333333333),("love",0.3333333333333333)],fromList [("and",1),("birds",1),("cat",1),("i",1),("love",1)] fromList ["and","birds","cat","i","love"] fromList [("cat",0.5),("i",0.3333333333333333),("love",0.3333333333333333)],fromList [("dog",1),("fishing",1),("i",2),("love",2)] fromList ["dog","fishing","i","love"] fromList [("dog",1.0),("i",0.6666666666666666),("love",0.6666666666666666)]]
-
+-- Test a simple file
 $ ./TfidfSingle -f "../SampleTestFiles/file1.txt" "I love cat dog bird"
-[fromList [("dog",1),("i",1),("love",1)] fromList ["dog","i","love"] fromList [("dog",1.0),("i",0.5),("love",0.5)],fromList [("fishing",1),("i",1),("love",1)] fromList ["fishing","i","love"] fromList [("i",0.5),("love",0.5)]]
+[[("I love cat dog bird" fromList [("bird",1),("cat",1),("dog",1),("i",1),("love",1)] fromList ["bird","cat","dog","i",,"love"] fromList [("bird",1.0),("cat",0.3333333333333333),("dog",0.5),("i",0.2),("love",0.25)],2.283333333333333)]
 -}
 
 
@@ -64,11 +61,12 @@ main = do
         -- Update the tfidf 
         let docsWithTfidf =  updateDocumentsWithTfIdfScore docs $ getGlobalDocumentFrequency docs searchWordsSet
 
-        print docsWithTfidf 
+        -- Sort the Documents with tfidf scores
+        let sortedDocumentsWithScore = searchAndSort (args !! 2) docsWithTfidf
 
-        -- TODO: select top N relevent Documents
+        print $ Prelude.take 1 sortedDocumentsWithScore
 
-    
+
 -- A function that either reads from a single file to turn each line to a Document or reads from a directory to turn each file to be a Document 
 getAllDocuments :: String -> String -> IO [Document]
 getAllDocuments  flag file
