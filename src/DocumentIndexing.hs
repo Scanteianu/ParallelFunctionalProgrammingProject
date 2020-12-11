@@ -4,6 +4,7 @@ module DocumentIndexing where
   import qualified Data.Map.Strict as Map
   import qualified Data.Set as Set
   import Data.Maybe
+  import Data.Time
   -- code is stolen liberally from my hws -ds
 
   --high level pipeline illustration: read files into strings -> turn strings into docs (parallel) -> get all words from doc collection (singlethreaded for now) -> compute tfidf map for each document (parallel)->ready to search!
@@ -26,6 +27,38 @@ module DocumentIndexing where
   -- yet again, the map thing here can become parallel
   searchAndSort:: String -> [Document] -> [(Document,Double)]
   searchAndSort keywords docs = sortDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs)
+
+  searchAndSortSequential:: String -> [Document] -> IO [(Document,Double)]
+  searchAndSortSequential keywords docs = do
+    let kws = seq keywords (tokenizeAndNormalize keywords)
+    putStrLn "kws"
+    let makeTime1 = seq getZonedTime (formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%Q" <$> getZonedTime) -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
+    putStrLn =<< makeTime1
+    let docScores = seq docs (map (docScore kws) docs)
+    putStrLn "scores"
+    let makeTime2 = seq getZonedTime (formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%Q" <$> getZonedTime) -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
+    putStrLn =<< makeTime2
+    let sortedScores = seq docScores (sortDocsByScore docScores)
+    putStrLn "sortedScores"
+    let makeTime3 = seq getZonedTime (formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%Q" <$> getZonedTime) -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
+    putStrLn =<< makeTime3
+    return sortedScores
+{-  searchAndSortPar:: String -> [Document] -> IO [(Document,Double)]
+  searchAndSortPar keywords docs = do
+    let kws = tokenizeAndNormalize keywords
+    putStrLn "kws"
+    let makeTime1 = formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%Q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
+    putStrLn =<< makeTime1
+    let docScores = parMap (docScore kws) docs
+    putStrLn "scores"
+    let makeTime2 = formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%Q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
+    putStrLn =<< makeTime2
+    let sortedScores = sortDocsByScore docScores
+    putStrLn "sortedScores"
+    let makeTime3 = formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%Q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
+    putStrLn =<< makeTime3
+    return sortedScores-}
+
   docScore :: [String] -> Document -> (Document, Double)
   docScore keywords doc = (doc, foldl (+) 0 [keywordScore x doc | x <- keywords])
 
