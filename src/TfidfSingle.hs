@@ -17,9 +17,12 @@ $ ./TfidfSingle -f "../SampleTestFiles/file1.txt" "I love cat dog bird"
 New compilation/execution instructions for parallelism∷
 1) stack install parallel (only once)
 
-2) stack ghc -- --make -Wall -O TfidfSingle.hs -XDeriveAnyClass -XDeriveGeneric
+2) stack ghc -- -threaded --make -Wall -O TfidfSingle.hs -XDeriveAnyClass -XDeriveGeneric
 
-3) ./TfidfSingle -f "../SampleTestFiles/twitterCustomerSupportTruncated.txt" "airline delay"
+3) ./TfidfSingle +RTS -N4 -RTS -f "../SampleTestFiles/twitterCustomerSupportTruncated.txt" "airline delay"
+
+3a) ./TfidfSingle +RTS -N4 -RTS -f "../SampleTestFiles/twitterLargeStrings.txt" "airline delay"
+3b) ./TfidfSingle +RTS -N4 -RTS -d "../SmallInputFiles" "author"
 -}
 
 import System.Environment(getArgs, getProgName)
@@ -29,6 +32,7 @@ import System.Exit(exitFailure)
 import System.FilePath ((</>))
 import Data.Char
 import Data.Set as Set
+import Control.DeepSeq
 import Prelude
 
 
@@ -71,12 +75,22 @@ main = do
         let docsWithTfidf =  updateDocumentsWithTfIdfScore docs $ getGlobalDocumentFrequency docs searchWordsSet
 
         -- Sort the Documents with tfidf scores
-        let sortedDocumentsWithScore = fmap simplifyOutput (searchAndSortSeq (args !! 2) docsWithTfidf)
+        print "sequential searchAndSort"
+        let sortedDocumentsWithScore = docsWithTfidf `deepseq` fmap simplifyOutput (searchAndSortSeq (args !! 2) docsWithTfidf)
 
         let results = fmap (Prelude.take 5) sortedDocumentsWithScore
 
         outputStr <- fmap show results
-        print $ outputStr
+        print $ outputStr -- shorten wikipedia
+
+        print "parallel searchAndSort"
+        -- Sort the Documents with tfidf scores +parallelism
+        let sortedDocumentsWithScorePar = docsWithTfidf `deepseq` fmap simplifyOutput (searchAndSortPar (args !! 2) docsWithTfidf)
+
+        let resultsPar = fmap (Prelude.take 5) sortedDocumentsWithScorePar
+
+        outputStrPar <- fmap show resultsPar
+        print $ outputStrPar
 
 
 -- A function that either reads from a single file to turn each line to a Document or reads from a directory to turn each file to be a Document

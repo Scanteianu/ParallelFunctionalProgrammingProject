@@ -4,7 +4,6 @@ module DocumentIndexing where
   import qualified Data.Map.Strict as Map
   import qualified Data.Set as Set
   import Data.Maybe
-  import Data.Time
   import Control.Parallel.Strategies
   import Control.DeepSeq
   import GHC.Generics (Generic) --https://hackage.haskell.org/package/deepseq-1.4.2.0/docs/Control-DeepSeq.html
@@ -28,7 +27,7 @@ module DocumentIndexing where
 
   --user friendly output
   simplifyOutput :: [(Document,Double)] -> [(String, Double)]
-  simplifyOutput inputs = [(text a, b)|(a,b)<-inputs]
+  simplifyOutput inputs = [(take 140 (text a), b)|(a,b)<-inputs]
 
   --this is the search function - input is a string of space separated keywords and the list of docs, output is the docs sorted by score and scores, in tuples
   -- yet again, the map thing here can become parallel
@@ -40,34 +39,39 @@ module DocumentIndexing where
     cpuTime0 <- getCPUTime
     let kws = cpuTime0 `deepseq` tokenizeAndNormalize keywords
     cpuTime1 <- kws `deepseq` getCPUTime
+
+    let docScores = cpuTime1  `deepseq` map (docScore kws) docs
+
+    cpuTime2 <- docScores `deepseq` getCPUTime
+
+    let sortedScores = cpuTime2 `deepseq` sortDocsByScore docScores
+
+    cpuTime3 <- sortedScores `deepseq` getCPUTime
+
     putStrLn "kws"
     print (cpuTime1-cpuTime0)
-    let docScores = cpuTime1  `deepseq` map (docScore kws) docs
     putStrLn "scores"
-    cpuTime2 <- docScores `deepseq` getCPUTime
     print (cpuTime2-cpuTime1)
-    let sortedScores = cpuTime2 `deepseq` sortDocsByScore docScores
     putStrLn "sortedScores"
-    cpuTime3 <- sortedScores `deepseq` getCPUTime
     print (cpuTime3 - cpuTime2)
     return sortedScores
   --https://softwareengineering.stackexchange.com/questions/160580/how-to-force-evaluation-in-haskell/160587
   searchAndSortPar:: String -> [Document] -> IO [(Document,Double)]
   searchAndSortPar keywords docs = do
-    let kws = tokenizeAndNormalize keywords
-    let makeTime1 = kws `deepseq` formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S%q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
+    cpuTime0 <- getCPUTime
+    let kws = cpuTime0 `deepseq` tokenizeAndNormalize keywords
+    cpuTime1 <- kws `deepseq` getCPUTime
+    let docScores = cpuTime1  `deepseq` (map (docScore kws) docs `using` parList rpar)
+    cpuTime2 <- docScores `deepseq` getCPUTime
+    let sortedScores = cpuTime2 `deepseq` sortDocsByScore docScores
+    cpuTime3 <- sortedScores `deepseq` getCPUTime
     putStrLn "kws"
-    putStrLn =<< makeTime1
-    let docScores = map (docScore kws) docs `using` parList rseq
+    print (cpuTime1-cpuTime0)
     putStrLn "scores"
-    let makeTime2 = docScores `deepseq` formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S%q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
-    putStrLn =<< makeTime2
-    let sortedScores = sortDocsByScore docScores `using` rseq
+    print (cpuTime2-cpuTime1)
     putStrLn "sortedScores"
-    let makeTime3 = sortedScores `deepseq` formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S%q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
-    putStrLn =<< makeTime3
+    print (cpuTime3 - cpuTime2)
     return sortedScores
-
   docScore :: [String] -> Document -> (Document, Double)
   docScore keywords doc = (doc, foldl (+) 0 [keywordScore x doc | x <- keywords])
 
