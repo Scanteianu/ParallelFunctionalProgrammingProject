@@ -5,6 +5,7 @@ module DocumentIndexing where
   import qualified Data.Set as Set
   import Data.Maybe
   import Data.Time
+  import Control.Parallel.Strategies
   -- code is stolen liberally from my hws -ds
 
   --high level pipeline illustration: read files into strings -> turn strings into docs (parallel) -> get all words from doc collection (singlethreaded for now) -> compute tfidf map for each document (parallel)->ready to search!
@@ -43,13 +44,13 @@ module DocumentIndexing where
     let makeTime3 = seq getZonedTime (formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%Q" <$> getZonedTime) -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
     putStrLn =<< makeTime3
     return sortedScores
-{-  searchAndSortPar:: String -> [Document] -> IO [(Document,Double)]
+  searchAndSortPar:: String -> [Document] -> IO [(Document,Double)]
   searchAndSortPar keywords docs = do
     let kws = tokenizeAndNormalize keywords
     putStrLn "kws"
     let makeTime1 = formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%Q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
     putStrLn =<< makeTime1
-    let docScores = parMap (docScore kws) docs
+    let docScores = map (docScore kws) docs `using` parList rseq
     putStrLn "scores"
     let makeTime2 = formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%Q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
     putStrLn =<< makeTime2
@@ -57,7 +58,7 @@ module DocumentIndexing where
     putStrLn "sortedScores"
     let makeTime3 = formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%Q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
     putStrLn =<< makeTime3
-    return sortedScores-}
+    return sortedScores
 
   docScore :: [String] -> Document -> (Document, Double)
   docScore keywords doc = (doc, foldl (+) 0 [keywordScore x doc | x <- keywords])
