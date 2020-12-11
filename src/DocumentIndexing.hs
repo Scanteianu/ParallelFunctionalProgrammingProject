@@ -8,6 +8,7 @@ module DocumentIndexing where
   import Control.Parallel.Strategies
   import Control.DeepSeq
   import GHC.Generics (Generic) --https://hackage.haskell.org/package/deepseq-1.4.2.0/docs/Control-DeepSeq.html
+  import System.CPUTime --https://downloads.haskell.org/~ghc/7.10.1/docs/html/libraries/System-CPUTime.html
   -- code is stolen liberally from my hws -ds
 
   --high level pipeline illustration: read files into strings -> turn strings into docs (parallel) -> get all words from doc collection (singlethreaded for now) -> compute tfidf map for each document (parallel)->ready to search!
@@ -36,18 +37,19 @@ module DocumentIndexing where
 
   searchAndSortSeq:: String -> [Document] -> IO [(Document,Double)]
   searchAndSortSeq keywords docs = do
-    let kws = tokenizeAndNormalize keywords
-    let makeTime1 = kws `deepseq` formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S%q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
+    cpuTime0 <- getCPUTime
+    let kws = cpuTime0 `deepseq` tokenizeAndNormalize keywords
+    cpuTime1 <- kws `deepseq` getCPUTime
     putStrLn "kws"
-    putStrLn =<< makeTime1
-    let docScores = map (docScore kws) docs
+    print (cpuTime1-cpuTime0)
+    let docScores = cpuTime1  `deepseq` map (docScore kws) docs
     putStrLn "scores"
-    let makeTime2 = docScores `deepseq` formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S%q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
-    putStrLn =<< makeTime2
-    let sortedScores = sortDocsByScore docScores
+    cpuTime2 <- docScores `deepseq` getCPUTime
+    print (cpuTime2-cpuTime1)
+    let sortedScores = cpuTime2 `deepseq` sortDocsByScore docScores
     putStrLn "sortedScores"
-    let makeTime3 = sortedScores `deepseq` formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S%q" <$> getZonedTime -- stolen from https://stackoverflow.com/questions/41655218/printing-timestamps-while-debugging-in-haskell
-    putStrLn =<< makeTime3
+    cpuTime3 <- sortedScores `deepseq` getCPUTime
+    print (cpuTime3 - cpuTime2)
     return sortedScores
   --https://softwareengineering.stackexchange.com/questions/160580/how-to-force-evaluation-in-haskell/160587
   searchAndSortPar:: String -> [Document] -> IO [(Document,Double)]
