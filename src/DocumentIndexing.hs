@@ -61,7 +61,7 @@ module DocumentIndexing where
     cpuTime0 <- getCPUTime
     let kws = cpuTime0 `deepseq` tokenizeAndNormalize keywords
     cpuTime1 <- kws `deepseq` getCPUTime
-    let docScores = cpuTime1  `deepseq` (map (docScore kws) docs `using` parList rpar)
+    let docScores = cpuTime1  `deepseq` (parMap rseq (docScore kws) docs )
     cpuTime2 <- docScores `deepseq` getCPUTime
     let sortedScores = cpuTime2 `deepseq` sortDocsByScore docScores
     cpuTime3 <- sortedScores `deepseq` getCPUTime
