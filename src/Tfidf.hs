@@ -2,13 +2,13 @@
     TFIDF project: A single thread
 
 $ stack ghc -- --make -Wall -O TfidfSingle.hs
-Usage: TfidfSingle -f <filesname> <search-phase> or  TfidfSingle -d <files-path> <search-phase>
+Usage: Tfidf -f <filesname> <search-phase> or  TfidfSingle -d <files-path> <search-phase>
 
 "-d" flag reads each file of a directory into a Document.
 "-f" flag reads each line of a file into a Document.
 
 -- Test a simple file
-$ ./TfidfSingle -f "../SampleTestFiles/file1.txt" "I love cat dog bird"
+$ ./Tfidf -f "../SampleTestFiles/file1.txt" "I love cat dog bird"
 [[("I love cat dog bird" fromList [("bird",1),("cat",1),("dog",1),("i",1),("love",1)] fromList ["bird","cat","dog","i",,"love"] fromList [("bird",1.0),("cat",0.3333333333333333),("dog",0.5),("i",0.2),("love",0.25)],2.283333333333333)]
 -}
 
@@ -17,12 +17,14 @@ $ ./TfidfSingle -f "../SampleTestFiles/file1.txt" "I love cat dog bird"
 New compilation/execution instructions for parallelism∷
 1) stack install parallel (only once)
 
-2) stack ghc -- -threaded --make -Wall -O TfidfSingle.hs -XDeriveAnyClass -XDeriveGeneric
+2) stack ghc -- -threaded --make -Wall -O Tfidf.hs -XDeriveAnyClass -XDeriveGeneric
 
-3) ./TfidfSingle +RTS -N4 -RTS -f "../SampleTestFiles/twitterCustomerSupportTruncated.txt" "airline delay"
+import System.Directory as Dir
+    ( doesDirectoryExist, doesFileExist, getDirectoryContents )
+    ( doesDirectoryExist, doesFileExist, getDirectoryContents ) -f "../SampleTestFiles/twitterCustomerSupportTruncated.txt" "airline delay"
 
-3a) ./TfidfSingle +RTS -N4 -RTS -f "../SampleTestFiles/twitterLargeStrings.txt" "airline delay"
-3b) ./TfidfSingle +RTS -N4 -RTS -d "../SmallInputFiles" "author"
+3a) ./Tfidf +RTS -N4 -RTS -f "../SampleTestFiles/twitterLargeStrings.txt" "airline delay"
+3b) ./Tfidf +RTS -N4 -RTS -d "../SmallInputFiles" "author"
 -}
 
 import System.Environment(getArgs, getProgName)
@@ -34,6 +36,7 @@ import Data.Char
 import Data.Set as Set
 import Control.DeepSeq
 import Prelude
+import System.CPUTime 
 
 
 main :: IO ()
@@ -65,42 +68,91 @@ main = do
         exitFailure
        _ -> do
 
-        -- Get all the Documents
-        docs <- getAllDocuments (head args) (args !! 1)
-
-        -- Get all the search words
-        let searchWordsSet =  Set.fromList $ Prelude.map sanitizeWord $ words $ args !! 2
-
-        -- Update the tfidf
-        let docsWithTfidf =  updateDocumentsWithTfIdfScore docs $ getGlobalDocumentFrequency docs searchWordsSet
-
-        -- Sort the Documents with tfidf scores
-        print "sequential searchAndSort"
-        let sortedDocumentsWithScore = docsWithTfidf `deepseq` fmap simplifyOutput (searchAndSortSeq (args !! 2) docsWithTfidf)
-
+        -- Run single thread 
+        let sortedDocumentsWithScore = runTfidfSingle args
         let results = fmap (Prelude.take 5) sortedDocumentsWithScore
-
         outputStr <- fmap show results
         print $ outputStr -- shorten wikipedia
 
-        print "parallel searchAndSort"
-        -- Sort the Documents with tfidf scores +parallelism
-        let sortedDocumentsWithScorePar = docsWithTfidf `deepseq` fmap simplifyOutput (searchAndSortPar (args !! 2) docsWithTfidf)
 
+        -- Run parallel thread 
+        let sortedDocumentsWithScorePar = runTfidfParallel args
         let resultsPar = fmap (Prelude.take 5) sortedDocumentsWithScorePar
-
         outputStrPar <- fmap show resultsPar
-        print $ outputStrPar
+        print $ outputStrPar  -- shorten wikipedia
 
+
+
+runTfidfSingle :: [String] -> IO [(String, Double)]
+runTfidfSingle args = do
+    -- Get all the Documents
+    docs <- getAllDocuments (head args) (args !! 1)
+
+    -- Get all the search words
+    let searchWordsSet =  Set.fromList $ Prelude.map sanitizeWord $ words $ args !! 2
+
+    -- Update the tfidf -- updateDocumentsWithTfIdfScore docs $ getGlobalDocumentFrequency 
+    docsWithTfidf <-  updateTfidf docs searchWordsSet
+
+    -- Sort the Documents with tfidf scores
+    print "sequential searchAndSort"
+    docsWithTfidf `deepseq` fmap simplifyOutput (searchAndSortSeq (args !! 2) docsWithTfidf)
+
+
+
+runTfidfParallel :: [String] -> IO [(String, Double)]
+runTfidfParallel args = do
+    -- Get all the Documents
+    docs <- getAllDocuments (head args) (args !! 1)
+
+    -- Get all the search words
+    let searchWordsSet =  Set.fromList $ Prelude.map sanitizeWord $ words $ args !! 2
+
+    -- Update the tfidf -- updateDocumentsWithTfIdfScore docs $ getGlobalDocumentFrequency 
+    docsWithTfidf <-  updateTfidf docs searchWordsSet
+
+    print "parallel searchAndSort"
+    -- Sort the Documents with tfidf scores +parallelism
+    docsWithTfidf `deepseq` fmap simplifyOutput (searchAndSortPar (args !! 2) docsWithTfidf)
+
+   
+
+updateTfidf :: [Document] ->Set.Set String ->  IO [Document]
+updateTfidf docs searchWordsSet  = do 
+    cpuTime0 <- getCPUTime
+    let golbalFreq = getGlobalDocumentFrequency docs searchWordsSet
+    cpuTime1 <- golbalFreq `deepseq` getCPUTime
+
+    putStr "Get Global Frequency\n" 
+    print(cpuTime1 - cpuTime0)
+    
+    cpuTime2 <- getCPUTime
+    let docsWithTfidf = updateDocumentsWithTfIdfScore docs golbalFreq
+    cpuTime3 <- docsWithTfidf `deepseq` getCPUTime
+
+    putStr "Update tfidf\n" 
+    print(cpuTime3 - cpuTime2)
+    return docsWithTfidf 
 
 -- A function that either reads from a single file to turn each line to a Document or reads from a directory to turn each file to be a Document
 getAllDocuments :: String -> String -> IO [Document]
 getAllDocuments  flag file
     | flag == "-d" = do
+        cpuTime0 <- getCPUTime
         files <- getDirectoryFiles file
+        cpuTime1 <- files `deepseq` getCPUTime
+        
+        putStr "Convert Files to Documents\n" 
+        print(cpuTime1 - cpuTime0)
+
         readFilesToDocuments files
     | flag == "-f" = do
+        cpuTime0 <- getCPUTime
         content <- readFile file
+        cpuTime1 <- content `deepseq` getCPUTime 
+        putStr "Convert Files to Documents\n" 
+        print(cpuTime1 - cpuTime0)
+
         return $ Prelude.map readDocument $ lines content
     | otherwise = return []
 
