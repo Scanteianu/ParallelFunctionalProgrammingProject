@@ -7,7 +7,7 @@ def runAndTime(threads, file):
     out=subprocess.run(["Tfidf",'+RTS','-N'+str(threads) ,'-RTS', '-f', file, "airline delay"],capture_output=True)
     end=time.time()
     #print(end-start)
-    #print(out)
+    print(out)
     return end-start
 def runAndStat(threads,file,details):
     elapsedList=[]

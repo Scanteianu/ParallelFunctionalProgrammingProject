@@ -37,6 +37,7 @@ import Data.Set as Set
 import Control.DeepSeq
 import Prelude
 import System.CPUTime
+import Control.Parallel.Strategies
 
 
 main :: IO ()
@@ -76,11 +77,14 @@ main = do
 
 
         -- Run parallel thread
-        let sortedDocumentsWithScorePar = runTfidfParallel args
-        let resultsPar = fmap (Prelude.take 5) sortedDocumentsWithScorePar
-        outputStrPar <- fmap show resultsPar
-        print $ outputStrPar  -- shorten wikipedia
-
+        --let sortedDocumentsWithScorePar = runTfidfParallel args
+        --let resultsPar = fmap (Prelude.take 5) sortedDocumentsWithScorePar
+        --outputStrPar <- fmap show resultsPar
+        --print $ outputStrPar  -- shorten wikipedia
+        fileText <- readFile (args !! 1)
+        let inputs = lines fileText
+        let results = runTfidfNoPrint inputs (args !! 2)
+        print $ results
 
 
 runTfidfSingle :: [String] -> IO [(String, Double)]
@@ -114,21 +118,31 @@ runTfidfParallel args = do
     print "parallel searchAndSort"
     -- Sort the Documents with tfidf scores +parallelism
     docsWithTfidf `deepseq` fmap simplifyOutput (searchAndSortPar (args !! 2) docsWithTfidf)
+    
 
+runTfidfNoPrint :: [String] -> String -> [(String,Double)]
+runTfidfNoPrint texts keys = simplifyOutput (searchAndSort keys indexDocs)
+        where 
+            documents = singleThreadedReadDocuments texts
+            allWords = getAllTheWords documents
+            globFreq = getGlobalDocumentFrequency documents allWords
+            indexDocs = updateDocumentsWithTfIdfScore documents globFreq
+            
+            
 
 
 updateTfidf :: [Document] ->Set.Set String ->  IO [Document]
 updateTfidf docs searchWordsSet  = do
     cpuTime0 <- getCPUTime
     let golbalFreq = getGlobalDocumentFrequency docs searchWordsSet
-    cpuTime1 <- golbalFreq `deepseq` getCPUTime
+    cpuTime1 <- golbalFreq `seq` getCPUTime
 
     putStr "Get Global Frequency\n"
     print(cpuTime1 - cpuTime0)
 
     cpuTime2 <- getCPUTime
     let docsWithTfidf = updateDocumentsWithTfIdfScore docs golbalFreq
-    cpuTime3 <- docsWithTfidf `deepseq` getCPUTime
+    cpuTime3 <- docsWithTfidf `seq` getCPUTime
 
     putStr "Update tfidf\n"
     print(cpuTime3 - cpuTime2)
@@ -140,7 +154,7 @@ getAllDocuments  flag file
     | flag == "-d" = do
         cpuTime0 <- getCPUTime
         files <- getDirectoryFiles file
-        cpuTime1 <- files `deepseq` getCPUTime
+        cpuTime1 <- files `seq` getCPUTime
 
         putStr "Convert Files to Documents\n"
         print(cpuTime1 - cpuTime0)
@@ -149,13 +163,12 @@ getAllDocuments  flag file
     | flag == "-f" = do
         cpuTime0 <- getCPUTime
         content <- readFile file
-        cpuTime1 <- content `deepseq` getCPUTime
+        cpuTime1 <- content `seq` getCPUTime
         putStr "Convert Files to Documents\n"
         print(cpuTime1 - cpuTime0)
 
         return $ Prelude.map readDocument $ lines content
     | otherwise = return []
-
 
 -- A funtion to check if there is any input errors
 checkInputErrors :: [String] -> IO Int

@@ -32,7 +32,7 @@ module DocumentIndexing where
   --this is the search function - input is a string of space separated keywords and the list of docs, output is the docs sorted by score and scores, in tuples
   -- yet again, the map thing here can become parallel
   searchAndSort:: String -> [Document] -> [(Document,Double)]
-  searchAndSort keywords docs = sortDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs)
+  searchAndSort keywords docs = sortDocsByScore (parMap rseq (docScore (tokenizeAndNormalize keywords)) docs)
 
   searchAndSortSeq:: String -> [Document] -> IO [(Document,Double)]
   searchAndSortSeq keywords docs = do
