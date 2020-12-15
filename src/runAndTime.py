@@ -11,7 +11,7 @@ def runAndTime(threads, file):
     return end-start
 def runAndStat(threads,file,details):
     elapsedList=[]
-    for i in range(1,2):
+    for i in range(1,10):
         elapsed=runAndTime(threads,file)
         elapsedList.append(elapsed)
         details+="{},{}\n".format(i, elapsed)
