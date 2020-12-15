@@ -121,7 +121,7 @@ runTfidfParallel args = do
     
 
 runTfidfNoPrint :: [String] -> String -> [(String,Double)]
-runTfidfNoPrint texts keys = simplifyOutput (searchAndSort keys indexDocs)
+runTfidfNoPrint texts keys = Prelude.take 5 (simplifyOutput (maxAndSort keys indexDocs))
         where 
             documents = singleThreadedReadDocuments texts
             allWords = getAllTheWords documents

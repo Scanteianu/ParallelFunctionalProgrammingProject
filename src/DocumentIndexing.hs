@@ -32,7 +32,10 @@ module DocumentIndexing where
   --this is the search function - input is a string of space separated keywords and the list of docs, output is the docs sorted by score and scores, in tuples
   -- yet again, the map thing here can become parallel
   searchAndSort:: String -> [Document] -> [(Document,Double)]
-  searchAndSort keywords docs = sortDocsByScore (parMap rseq (docScore (tokenizeAndNormalize keywords)) docs)
+  searchAndSort keywords docs = sortDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk 32 rseq)
+  
+  maxAndSort:: String -> [Document] -> [(Document,Double)]
+  maxAndSort keywords docs = maxDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk 32 rseq)
 
   searchAndSortSeq:: String -> [Document] -> IO [(Document,Double)]
   searchAndSortSeq keywords docs = do
@@ -79,7 +82,7 @@ module DocumentIndexing where
   keywordScore kw doc = fromMaybe 0 (Map.lookup kw (tfidf doc)) --https://hoogle.haskell.org/?hoogle=fromMaybe
   --this is the thing that we'll need to parallelize; figure out how to do parmap here
   singleThreadedReadDocuments :: [String] -> [Document]
-  singleThreadedReadDocuments docs = parMap rseq readDocument docs
+  singleThreadedReadDocuments docs = map readDocument docs `using` parListChunk 32 rseq
   --basic text->document parsing (note, tfidf has to be added as a second step)
   readDocument :: String -> Document
   readDocument textString = Document textString wordMap (Map.keysSet wordMap) Map.empty
@@ -87,7 +90,7 @@ module DocumentIndexing where
           wordMap = Map.fromList (countTuples textString)
   --this thing can also be parallelized
   updateDocumentsWithTfIdfScore :: [Document] -> Map.Map String Int -> [Document]
-  updateDocumentsWithTfIdfScore docs globTermFreq = parMap rseq (`updateDocWithTfIdf` globTermFreq) docs
+  updateDocumentsWithTfIdfScore docs globTermFreq = map (`updateDocWithTfIdf` globTermFreq) docs `using` parListChunk 32 rseq
 
   --individual doc tfidf computation
   updateDocWithTfIdf :: Document -> Map.Map String Int -> Document
@@ -100,6 +103,8 @@ module DocumentIndexing where
 
   sortDocsByScore ::Ord a => [(Document, a)]->[(Document, a)]
   sortDocsByScore scoredDocs = sortBy (\(_,a) (_,b) -> compare b a) scoredDocs
+  maxDocsByScore ::Ord a => [(Document, a)]->[(Document, a)]
+  maxDocsByScore scoredDocs = [maximumBy (\(_,a) (_,b) -> compare b a) scoredDocs]
   --helper functions below here
   updateWithWord :: Map.Map String Int -> String -> Map.Map String Int
   updateWithWord wordMap word = Map.adjust (+1) word wordMap
