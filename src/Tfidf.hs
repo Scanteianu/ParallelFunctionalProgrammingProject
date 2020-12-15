@@ -36,7 +36,7 @@ import Data.Char
 import Data.Set as Set
 import Control.DeepSeq
 import Prelude
-import System.CPUTime 
+import System.CPUTime
 
 
 main :: IO ()
@@ -68,14 +68,14 @@ main = do
         exitFailure
        _ -> do
 
-        -- Run single thread 
-        let sortedDocumentsWithScore = runTfidfSingle args
+        -- Run single thread
+        {-let sortedDocumentsWithScore = runTfidfSingle args
         let results = fmap (Prelude.take 5) sortedDocumentsWithScore
         outputStr <- fmap show results
-        print $ outputStr -- shorten wikipedia
+        print $ outputStr -- shorten wikipedia-}
 
 
-        -- Run parallel thread 
+        -- Run parallel thread
         let sortedDocumentsWithScorePar = runTfidfParallel args
         let resultsPar = fmap (Prelude.take 5) sortedDocumentsWithScorePar
         outputStrPar <- fmap show resultsPar
@@ -91,7 +91,7 @@ runTfidfSingle args = do
     -- Get all the search words
     let searchWordsSet =  Set.fromList $ Prelude.map sanitizeWord $ words $ args !! 2
 
-    -- Update the tfidf -- updateDocumentsWithTfIdfScore docs $ getGlobalDocumentFrequency 
+    -- Update the tfidf -- updateDocumentsWithTfIdfScore docs $ getGlobalDocumentFrequency
     docsWithTfidf <-  updateTfidf docs searchWordsSet
 
     -- Sort the Documents with tfidf scores
@@ -108,31 +108,31 @@ runTfidfParallel args = do
     -- Get all the search words
     let searchWordsSet =  Set.fromList $ Prelude.map sanitizeWord $ words $ args !! 2
 
-    -- Update the tfidf -- updateDocumentsWithTfIdfScore docs $ getGlobalDocumentFrequency 
+    -- Update the tfidf -- updateDocumentsWithTfIdfScore docs $ getGlobalDocumentFrequency
     docsWithTfidf <-  updateTfidf docs searchWordsSet
 
     print "parallel searchAndSort"
     -- Sort the Documents with tfidf scores +parallelism
     docsWithTfidf `deepseq` fmap simplifyOutput (searchAndSortPar (args !! 2) docsWithTfidf)
 
-   
+
 
 updateTfidf :: [Document] ->Set.Set String ->  IO [Document]
-updateTfidf docs searchWordsSet  = do 
+updateTfidf docs searchWordsSet  = do
     cpuTime0 <- getCPUTime
     let golbalFreq = getGlobalDocumentFrequency docs searchWordsSet
     cpuTime1 <- golbalFreq `deepseq` getCPUTime
 
-    putStr "Get Global Frequency\n" 
+    putStr "Get Global Frequency\n"
     print(cpuTime1 - cpuTime0)
-    
+
     cpuTime2 <- getCPUTime
     let docsWithTfidf = updateDocumentsWithTfIdfScore docs golbalFreq
     cpuTime3 <- docsWithTfidf `deepseq` getCPUTime
 
-    putStr "Update tfidf\n" 
+    putStr "Update tfidf\n"
     print(cpuTime3 - cpuTime2)
-    return docsWithTfidf 
+    return docsWithTfidf
 
 -- A function that either reads from a single file to turn each line to a Document or reads from a directory to turn each file to be a Document
 getAllDocuments :: String -> String -> IO [Document]
@@ -141,16 +141,16 @@ getAllDocuments  flag file
         cpuTime0 <- getCPUTime
         files <- getDirectoryFiles file
         cpuTime1 <- files `deepseq` getCPUTime
-        
-        putStr "Convert Files to Documents\n" 
+
+        putStr "Convert Files to Documents\n"
         print(cpuTime1 - cpuTime0)
 
         readFilesToDocuments files
     | flag == "-f" = do
         cpuTime0 <- getCPUTime
         content <- readFile file
-        cpuTime1 <- content `deepseq` getCPUTime 
-        putStr "Convert Files to Documents\n" 
+        cpuTime1 <- content `deepseq` getCPUTime
+        putStr "Convert Files to Documents\n"
         print(cpuTime1 - cpuTime0)
 
         return $ Prelude.map readDocument $ lines content

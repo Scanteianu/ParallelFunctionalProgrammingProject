@@ -79,7 +79,7 @@ module DocumentIndexing where
   keywordScore kw doc = fromMaybe 0 (Map.lookup kw (tfidf doc)) --https://hoogle.haskell.org/?hoogle=fromMaybe
   --this is the thing that we'll need to parallelize; figure out how to do parmap here
   singleThreadedReadDocuments :: [String] -> [Document]
-  singleThreadedReadDocuments docs = map readDocument docs
+  singleThreadedReadDocuments docs = parMap rseq readDocument docs
   --basic text->document parsing (note, tfidf has to be added as a second step)
   readDocument :: String -> Document
   readDocument textString = Document textString wordMap (Map.keysSet wordMap) Map.empty
@@ -87,7 +87,7 @@ module DocumentIndexing where
           wordMap = Map.fromList (countTuples textString)
   --this thing can also be parallelized
   updateDocumentsWithTfIdfScore :: [Document] -> Map.Map String Int -> [Document]
-  updateDocumentsWithTfIdfScore docs globTermFreq = map (`updateDocWithTfIdf` globTermFreq) docs
+  updateDocumentsWithTfIdfScore docs globTermFreq = parMap rseq (`updateDocWithTfIdf` globTermFreq) docs
 
   --individual doc tfidf computation
   updateDocWithTfIdf :: Document -> Map.Map String Int -> Document
