@@ -20,6 +20,12 @@ def runAndStat(threads,file,details):
 print("timing!")
 details=""
 
+details+="large:\n"
+print("large:")
+for i in range(1,6):
+    elapsed,stdev,details=runAndStat(i,"../SampleTestFiles/twitterLargeStrings.txt",details)
+    print("{},{},{}".format(i, elapsed,stdev),flush=True)
+
 details+="100k:\n"
 print("100k:")
 for i in range(1,6):
