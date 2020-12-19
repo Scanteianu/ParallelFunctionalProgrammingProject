@@ -4,7 +4,7 @@ import numpy
 
 def runAndTime(threads, file):
     start=time.time()
-    out=subprocess.run(["Tfidf",'+RTS','-N'+str(threads) ,'-RTS', '-f', file, "airline delay"],capture_output=True)
+    out=subprocess.run(["./Tfidf",'+RTS','-N'+str(threads) ,'-RTS', '-f', file, "airline delay"],capture_output=True)
     end=time.time()
     #print(end-start)
     #print(out)
