@@ -29,52 +29,12 @@ module DocumentIndexing where
   simplifyOutput :: [(Document,Double)] -> [(String, Double)]
   simplifyOutput inputs = [(take 140 (text a), b)|(a,b)<-inputs]
 
-  --this is the search function - input is a string of space separated keywords and the list of docs, output is the docs sorted by score and scores, in tuples
-  -- yet again, the map thing here can become parallel
-  searchAndSort:: String -> [Document] -> [(Document,Double)]
-  searchAndSort keywords docs = sortDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk 32 rseq)
-  
+
+
   maxAndSort:: String -> [Document] -> [(Document,Double)]
-  maxAndSort keywords docs = maxDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk 32 rseq)
+  maxAndSort keywords docs = maxDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk 4 rseq)
 
-  searchAndSortSeq:: String -> [Document] -> IO [(Document,Double)]
-  searchAndSortSeq keywords docs = do
-    cpuTime0 <- getCPUTime
-    let kws = cpuTime0 `deepseq` tokenizeAndNormalize keywords
-    cpuTime1 <- kws `deepseq` getCPUTime
 
-    let docScores = cpuTime1  `deepseq` map (docScore kws) docs
-
-    cpuTime2 <- docScores `deepseq` getCPUTime
-
-    let sortedScores = cpuTime2 `deepseq` sortDocsByScore docScores
-
-    cpuTime3 <- sortedScores `deepseq` getCPUTime
-
-    putStrLn "kws"
-    print (cpuTime1-cpuTime0)
-    putStrLn "scores"
-    print (cpuTime2-cpuTime1)
-    putStrLn "sortedScores"
-    print (cpuTime3 - cpuTime2)
-    return sortedScores
-  --https://softwareengineering.stackexchange.com/questions/160580/how-to-force-evaluation-in-haskell/160587
-  searchAndSortPar:: String -> [Document] -> IO [(Document,Double)]
-  searchAndSortPar keywords docs = do
-    cpuTime0 <- getCPUTime
-    let kws = cpuTime0 `deepseq` tokenizeAndNormalize keywords
-    cpuTime1 <- kws `deepseq` getCPUTime
-    let docScores = cpuTime1  `deepseq` (parMap rseq (docScore kws) docs )
-    cpuTime2 <- docScores `deepseq` getCPUTime
-    let sortedScores = cpuTime2 `deepseq` sortDocsByScore docScores
-    cpuTime3 <- sortedScores `deepseq` getCPUTime
-    putStrLn "kws"
-    print (cpuTime1-cpuTime0)
-    putStrLn "scores"
-    print (cpuTime2-cpuTime1)
-    putStrLn "sortedScores"
-    print (cpuTime3 - cpuTime2)
-    return sortedScores
   docScore :: [String] -> Document -> (Document, Double)
   docScore keywords doc = (doc, foldl (+) 0 [keywordScore x doc | x <- keywords])
 
@@ -82,7 +42,7 @@ module DocumentIndexing where
   keywordScore kw doc = fromMaybe 0 (Map.lookup kw (tfidf doc)) --https://hoogle.haskell.org/?hoogle=fromMaybe
   --this is the thing that we'll need to parallelize; figure out how to do parmap here
   singleThreadedReadDocuments :: [String] -> [Document]
-  singleThreadedReadDocuments docs = map readDocument docs `using` parListChunk 32 rseq
+  singleThreadedReadDocuments docs = map readDocument docs `using` parListChunk 4 rseq
   --basic text->document parsing (note, tfidf has to be added as a second step)
   readDocument :: String -> Document
   readDocument textString = Document textString wordMap (Map.keysSet wordMap) Map.empty
@@ -90,7 +50,7 @@ module DocumentIndexing where
           wordMap = Map.fromList (countTuples textString)
   --this thing can also be parallelized
   updateDocumentsWithTfIdfScore :: [Document] -> Map.Map String Int -> [Document]
-  updateDocumentsWithTfIdfScore docs globTermFreq = map (`updateDocWithTfIdf` globTermFreq) docs `using` parListChunk 32 rseq
+  updateDocumentsWithTfIdfScore docs globTermFreq = map (`updateDocWithTfIdf` globTermFreq) docs `using` parListChunk 4 rseq
 
   --individual doc tfidf computation
   updateDocWithTfIdf :: Document -> Map.Map String Int -> Document
@@ -143,3 +103,54 @@ module DocumentIndexing where
 
   sanitizeWord:: String -> String
   sanitizeWord word = map toLower (filter isLetter word)
+
+
+
+{--
+
+  --this is the search function - input is a string of space separated keywords and the list of docs, output is the docs sorted by score and scores, in tuples
+  -- yet again, the map thing here can become parallel
+  searchAndSort:: String -> [Document] -> [(Document,Double)]
+  searchAndSort keywords docs = sortDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk 32 rseq)
+ 
+  
+
+  searchAndSortSeq:: String -> [Document] -> IO [(Document,Double)]
+  searchAndSortSeq keywords docs = do
+    cpuTime0 <- getCPUTime
+    let kws = cpuTime0 `deepseq` tokenizeAndNormalize keywords
+    cpuTime1 <- kws `deepseq` getCPUTime
+
+    let docScores = cpuTime1  `deepseq` map (docScore kws) docs
+
+    cpuTime2 <- docScores `deepseq` getCPUTime
+
+    let sortedScores = cpuTime2 `deepseq` sortDocsByScore docScores
+
+    cpuTime3 <- sortedScores `deepseq` getCPUTime
+
+    putStrLn "kws"
+    print (cpuTime1-cpuTime0)
+    putStrLn "scores"
+    print (cpuTime2-cpuTime1)
+    putStrLn "sortedScores"
+    print (cpuTime3 - cpuTime2)
+    return sortedScores
+  --https://softwareengineering.stackexchange.com/questions/160580/how-to-force-evaluation-in-haskell/160587
+  searchAndSortPar:: String -> [Document] -> IO [(Document,Double)]
+  searchAndSortPar keywords docs = do
+    cpuTime0 <- getCPUTime
+    let kws = cpuTime0 `deepseq` tokenizeAndNormalize keywords
+    cpuTime1 <- kws `deepseq` getCPUTime
+    let docScores = cpuTime1  `deepseq` (parMap rseq (docScore kws) docs )
+    cpuTime2 <- docScores `deepseq` getCPUTime
+    let sortedScores = cpuTime2 `deepseq` sortDocsByScore docScores
+    cpuTime3 <- sortedScores `deepseq` getCPUTime
+    putStrLn "kws"
+    print (cpuTime1-cpuTime0)
+    putStrLn "scores"
+    print (cpuTime2-cpuTime1)
+    putStrLn "sortedScores"
+    print (cpuTime3 - cpuTime2)
+    return sortedScores
+--}
