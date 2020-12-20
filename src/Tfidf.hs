@@ -79,8 +79,8 @@ main = do
        _ -> do
 
         results <- runTfidfNoPrint (head args) (args!!1) (args !! 2) 
-        --print $ results
-        putStr "\n"
+        print $ results
+        -- putStr "\n"
 
 runTfidfNoPrint :: String -> String -> String -> IO [(String,Double)]
 runTfidfNoPrint flag files keys = do
@@ -92,7 +92,7 @@ runTfidfNoPrint flag files keys = do
     
     let result =  Prelude.take 5 (simplifyOutput (maxAndSort keys indexDocs))
     t2 <- result `seq` getCurrentTime
-    -- print $ "Time: maxSort\n"
+    print $ "Time: maxSort\n"
     print $ diffUTCTime t2 t1
 
     return result 
