@@ -24,6 +24,7 @@ import System.Directory as Dir
     ( doesDirectoryExist, doesFileExist, getDirectoryContents ) -f "../SampleTestFiles/twitterCustomerSupportTruncated.txt" "airline delay"
 
 3a) ./Tfidf +RTS -N4 -RTS -f "../SampleTestFiles/twitterLargeStrings.txt" "airline delay"
+./Tfidf +RTS -N4 -RTS -f "../SampleTestFiles/100ktwitter.txt" "airline delay"
 3b) ./Tfidf +RTS -N4 -RTS -d "../SmallInputFiles" "author"
 -}
 
@@ -118,17 +119,17 @@ runTfidfParallel args = do
     print "parallel searchAndSort"
     -- Sort the Documents with tfidf scores +parallelism
     docsWithTfidf `deepseq` fmap simplifyOutput (searchAndSortPar (args !! 2) docsWithTfidf)
-    
+
 
 runTfidfNoPrint :: [String] -> String -> [(String,Double)]
 runTfidfNoPrint texts keys = Prelude.take 5 (simplifyOutput (maxAndSort keys indexDocs))
-        where 
+        where
             documents = singleThreadedReadDocuments texts
             allWords = getAllTheWords documents
             globFreq = getGlobalDocumentFrequency documents allWords
             indexDocs = updateDocumentsWithTfIdfScore documents globFreq
-            
-            
+
+
 
 
 updateTfidf :: [Document] ->Set.Set String ->  IO [Document]
