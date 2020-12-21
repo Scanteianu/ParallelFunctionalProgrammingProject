@@ -33,7 +33,7 @@ module DocumentIndexing where
   -- yet again, the map thing here can become parallel
   searchAndSort:: String -> [Document] -> [(Document,Double)]
   searchAndSort keywords docs = sortDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk 32 rseq)
-  
+
   maxAndSort:: String -> [Document] -> [(Document,Double)]
   maxAndSort keywords docs = maxDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk 32 rseq)
 
@@ -104,7 +104,7 @@ module DocumentIndexing where
   sortDocsByScore ::Ord a => [(Document, a)]->[(Document, a)]
   sortDocsByScore scoredDocs = sortBy (\(_,a) (_,b) -> compare b a) scoredDocs
   maxDocsByScore ::Ord a => [(Document, a)]->[(Document, a)]
-  maxDocsByScore scoredDocs = [maximumBy (\(_,a) (_,b) -> compare b a) scoredDocs]
+  maxDocsByScore scoredDocs = [maximumBy (\(_,a) (_,b) -> compare a b) scoredDocs]
   --helper functions below here
   updateWithWord :: Map.Map String Int -> String -> Map.Map String Int
   updateWithWord wordMap word = Map.adjust (+1) word wordMap
