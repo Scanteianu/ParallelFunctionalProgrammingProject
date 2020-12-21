@@ -28,12 +28,8 @@ module DocumentIndexing where
   simplifyOutput :: [(Document,Double)] -> [(String, Double)]
   simplifyOutput inputs = [(take 140 (text a), b)|(a,b)<-inputs]
 
-
-
   maxAndSort:: String -> [Document] -> [(Document,Double)]
-  -- maxAndSort keywords docs = maxDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk 4 rseq)
-  maxAndSort keywords docs = sortDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs)
-
+  maxAndSort keywords docs = maxDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk 4 rseq)
 
   docScore :: [String] -> Document -> (Document, Double)
   docScore keywords doc = (doc, foldl (+) 0 [keywordScore x doc | x <- keywords])
@@ -50,8 +46,7 @@ module DocumentIndexing where
           wordMap = Map.fromList (countTuples textString)
   --this thing can also be parallelized
   updateDocumentsWithTfIdfScore :: [Document] -> Map.Map String Int -> [Document]
-  -- updateDocumentsWithTfIdfScore docs globTermFreq = map (`updateDocWithTfIdf` globTermFreq) docs `using` parListChunk 4 rseq
-  updateDocumentsWithTfIdfScore docs globTermFreq = map (`updateDocWithTfIdf` globTermFreq) docs
+  updateDocumentsWithTfIdfScore docs globTermFreq = map (`updateDocWithTfIdf` globTermFreq) docs `using` parListChunk 4 rseq
   
   --individual doc tfidf computation
   updateDocWithTfIdf :: Document -> Map.Map String Int -> Document
