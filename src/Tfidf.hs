@@ -85,8 +85,8 @@ main = do
 runTfidfNoPrint :: String -> String -> String -> IO [(String,Double)]
 runTfidfNoPrint flag files keys = do
     documents <- getAllDocuments flag files
-    let searchWordsSet =  Set.fromList $ Prelude.map sanitizeWord $ words $ keys
-    let globFreq = getGlobalDocumentFrequency documents searchWordsSet
+    let allWords = getAllTheWords documents
+    let globFreq = getGlobalDocumentFrequency documents allWords
     let indexDocs = updateDocumentsWithTfIdfScore documents globFreq
     t1 <- indexDocs `seq` getCurrentTime
     
@@ -100,13 +100,14 @@ runTfidfNoPrint flag files keys = do
 
 -- A function that either reads from a single file to turn each line to a Document or reads from a directory to turn each file to be a Document 
 getAllDocuments :: String -> String -> IO [Document]
-getAllDocuments  flag file
+getAllDocuments flag file
     | flag == "-d" = do 
         files <- getDirectoryFiles file
         readFilesToDocuments files
     | flag == "-f" = do
-        content <- readFile file
-        return $ Prelude.map readDocument $ lines content 
+        fileText <- readFile file 
+        let documents = singleThreadedReadDocuments $ lines fileText 
+        return documents
     | otherwise = return []
 
 
