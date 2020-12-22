@@ -1,12 +1,10 @@
-
-
 {-
 
 Link to our Github project:  https://github.com/Scanteianu/ParallelFunctionalProgrammingProject
 Link to our Google Driver folder: https://docs.google.com/presentation/d/1bvrL5256hh0KythpZ8TOJ6gy8PVsm867huHGsoqHxdw/edit#slide=id.gb24068de60_0_39
 
 
-New compilation/execution instructions for parallelism∷
+Instructions for program∷
 1) Install the package (only once)
 $ stack install parallel 
 
@@ -26,15 +24,36 @@ $ ./Tfidf +RTS -N4 -RTS -f "../SampleTestFiles/twitterLargeStrings.txt" "airline
 [(" checked in 2 minutes after my flight became eligible for check in and I\226\8364\8482m in boarding group C @SouthwestAir HOW https://t.co/Hc9fKCdUJK @",16.166666666666664)]
 
 $ ./Tfidf +RTS -N4 -RTS -d "../SmallInputFiles" "author" 4
-2.859438s
-[("<!DOCTYPE html>\n<html class=\"client-nojs\" lang=\"en\" dir=\"ltr\">\n<head>\n<meta charset=\"UTF-8\"/>\n<title>George R. R. Martin - Wikipedia</title>",4.5),("<!DOCTYPE html>\n<html class=\"client-nojs\" lang=\"en\" dir=\"ltr\">\n<head>\n<meta charset=\"UTF-8\"/>\n<title>A Song of Ice and Fire - Wikipedia</tit",3.25),("\n\n\n\nGame of Thrones - Wikipedia\ndocument.documentElement.className=\"client-js\";RLCONF={\"wgBreakFrames\":!1,\"wgSeparatorTransformTable\":[\"\",\"\"",1.5),("<!DOCTYPE html>\n<html class=\"client-nojs\" lang=\"en\" dir=\"ltr\">\n<head>\n<meta charset=\"UTF-8\"/>\n<title>A Dance with Dragons - Wikipedia</title",1.25),("<!DOCTYPE html>\n<html class=\"client-nojs\" lang=\"en\" dir=\"ltr\">\n<head>\n<meta charset=\"UTF-8\"/>\n<title>Winter Is Coming - Wikipedia</title>\n<s",0.0)]
+4.466509s
+[("<!DOCTYPE html>\n<html class=\"client-nojs\" lang=\"en\" dir=\"ltr\">\n<head>\n<meta charset=\"UTF-8\"/>\n<title>George R. R. Martin - Wikipedia</title>",4.5)]
 
-
-4) Run the experiment with a simple shell program 
+4) Run experiments 
 4.a) Download 100ktwitter.txt, 500ktwitter.txt, 1mktwitter.txt from the Google Drive folder and move them to SampleTestFiles folder. These files are too large to push to github repo. 
-4.b) ./test.sh | grep ".\|Time\|Thread"
-4.c) Note the above experiment only captures the maxAndSort parallel part. 
 
+4.b) comment out the "print $ results" and uncomment the  "-- putStr "\n" to get a better format of experiment results.
+
+4.c) Recompile the program 
+
+4.d) End-to-end test 
+$ python3 runAndTime.py 
+timing!
+100k:
+1,7.944977786805895,0.3144225196171566 
+......
+
+4.e) Only time the maxAnsSort step to test various thread effects (This is a parallel step.)
+$ ./testThreads.sh | grep ".\|Time\|Thread"
+Time: maxSort
+Thread 1
+6.819989s
+
+4.d) Test different chunks and time the maxAnsSort step
+$ ./testChunks.sh | grep ".\|Time\|Thread"
+4 chunks
+Time: maxSort
+Thread 1
+6.738853s
+...
 
 -}
 
