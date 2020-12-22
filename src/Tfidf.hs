@@ -17,15 +17,15 @@ $ git clone https://github.com/Scanteianu/ParallelFunctionalProgrammingProject.g
 $ stack ghc -- -threaded --make -Wall -O Tfidf.hs -XDeriveAnyClass -XDeriveGeneric
 
 3) Sample tests 
-$ ./Tfidf +RTS -N1 -RTS -f "../SampleTestFiles/file1.txt" "I love cat dog bird"
-0.000089s
-[("I love cat dog bird",2.283333333333333),("I love cat dog",1.2833333333333332),("I love cat",0.7833333333333333),("I love",0.45),("I ",0.2)]
+$ ./Tfidf +RTS -N1 -RTS -f "../SampleTestFiles/file1.txt" "I love cat dog bird" 4
+0.000078s
+[("I love cat dog bird",2.283333333333333)]
 
-$ ./Tfidf +RTS -N4 -RTS -f "../SampleTestFiles/twitterLargeStrings.txt" "airline delay"
-16.384462s
-[(" checked in 2 minutes after my flight became eligible for check in and I\226\8364\8482m in boarding group C @SouthwestAir HOW https://t.co/Hc9fKCdUJK @",16.166666666666664),(" @Delta Our plane just crashed into the world trade center @Delta I have a problem with the flight I'm on right now it's urgent please respo",12.666666666666666),(" @hulu_support On live tv DVR, ~63 minutes. At Hulu online 85 via browser w/ no ads. This is first week with DVR ads and they are no-skip ad",11.083333333333332),(" @136460 Hello Kelsie, we hate to hear you having issues with our customer service. But how can I help you today? @sprintcare -im sure if u ",10.916666666666668),(" @116245 @ArgosHelpers She said sorry for the delay then buggered off. No thankyou or there's your items, just waltzed off \240\376\732\171 I was stood ",9.416666666666666)]
+$ ./Tfidf +RTS -N4 -RTS -f "../SampleTestFiles/twitterLargeStrings.txt" "airline delay" 4
+16.12025s
+[(" checked in 2 minutes after my flight became eligible for check in and I\226\8364\8482m in boarding group C @SouthwestAir HOW https://t.co/Hc9fKCdUJK @",16.166666666666664)]
 
-$ ./Tfidf +RTS -N4 -RTS -d "../SmallInputFiles" "author"
+$ ./Tfidf +RTS -N4 -RTS -d "../SmallInputFiles" "author" 4
 2.859438s
 [("<!DOCTYPE html>\n<html class=\"client-nojs\" lang=\"en\" dir=\"ltr\">\n<head>\n<meta charset=\"UTF-8\"/>\n<title>George R. R. Martin - Wikipedia</title>",4.5),("<!DOCTYPE html>\n<html class=\"client-nojs\" lang=\"en\" dir=\"ltr\">\n<head>\n<meta charset=\"UTF-8\"/>\n<title>A Song of Ice and Fire - Wikipedia</tit",3.25),("\n\n\n\nGame of Thrones - Wikipedia\ndocument.documentElement.className=\"client-js\";RLCONF={\"wgBreakFrames\":!1,\"wgSeparatorTransformTable\":[\"\",\"\"",1.5),("<!DOCTYPE html>\n<html class=\"client-nojs\" lang=\"en\" dir=\"ltr\">\n<head>\n<meta charset=\"UTF-8\"/>\n<title>A Dance with Dragons - Wikipedia</title",1.25),("<!DOCTYPE html>\n<html class=\"client-nojs\" lang=\"en\" dir=\"ltr\">\n<head>\n<meta charset=\"UTF-8\"/>\n<title>Winter Is Coming - Wikipedia</title>\n<s",0.0)]
 
@@ -44,7 +44,6 @@ import DocumentIndexing
 import System.Exit(exitFailure)
 import System.FilePath ((</>))
 import Data.Char
-import Data.Set as Set 
 import Prelude
 import Data.Time
 
@@ -56,7 +55,7 @@ main = do
    case errCheckStatus of
        1 -> do
         pn <- getProgName
-        putStr $ "Usage: "++ pn ++" -f <filesname> <search-phase> or  "++ pn ++" -d <files-path> <search-phase>\n"
+        putStr $ "Usage: "++ pn ++" -f <filesname> <search-phase> <number-of-chunks> or  "++ pn ++" -d <files-path> <search-phase> <number-of-chunks>\n"
         exitFailure
        2 -> do
         putStr $ "Flag Options: -f (read from a file)or -d (read from a directory)"
@@ -78,21 +77,23 @@ main = do
         exitFailure
        _ -> do
 
-        results <- runTfidfNoPrint (head args) (args!!1) (args !! 2) 
+        results <- runTfidfNoPrint (read (args !! 3)::Int)  (head args) (args!!1) (args !! 2) 
+
+        -- You can comment out the "print $ results" and uncomment the  "-- putStr "\n" to get a better format of experiment results
         print $ results
         -- putStr "\n"
 
-runTfidfNoPrint :: String -> String -> String -> IO [(String,Double)]
-runTfidfNoPrint flag files keys = do
+runTfidfNoPrint :: Int -> String -> String -> String  -> IO [(String,Double)]
+runTfidfNoPrint chunks flag files keys = do
     documents <- getAllDocuments flag files
     let allWords = getAllTheWords documents
     let globFreq = getGlobalDocumentFrequency documents allWords
     let indexDocs = updateDocumentsWithTfIdfScore documents globFreq
     t1 <- indexDocs `seq` getCurrentTime
     
-    let result =  Prelude.take 5 (simplifyOutput (maxAndSort keys indexDocs))
+    let result =  Prelude.take 5 (simplifyOutput (maxAndSort chunks keys indexDocs))
     t2 <- result `seq` getCurrentTime
-    print $ "Time: maxSort"
+    -- print $ "Time: maxSort"
     print $ diffUTCTime t2 t1
 
     return result 
@@ -114,7 +115,7 @@ getAllDocuments flag file
 -- A funtion to check if there is any input errors 
 checkInputErrors :: [String] -> IO Int 
 checkInputErrors args
-    | length args /= 3 = return 1
+    | length args /= 4 = return 1
     | not (head args == "-f" || head args == "-d")  = return 2
     | not (validateSearchPhase (args !! 2)) = return 3
     | otherwise = do
@@ -169,7 +170,6 @@ readFilesToDocuments files = sequence $ helperFunc files
                 readFileToString filePath = do 
                     fileContent <- readFile filePath
                     return $ readDocument fileContent
-
 
 
 

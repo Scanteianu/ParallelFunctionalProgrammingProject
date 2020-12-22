@@ -28,8 +28,8 @@ module DocumentIndexing where
   simplifyOutput :: [(Document,Double)] -> [(String, Double)]
   simplifyOutput inputs = [(take 140 (text a), b)|(a,b)<-inputs]
 
-  maxAndSort:: String -> [Document] -> [(Document,Double)]
-  maxAndSort keywords docs = maxDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk 4 rseq)
+  maxAndSort::  Int -> String -> [Document] -> [(Document,Double)]
+  maxAndSort chunks keywords docs  = maxDocsByScore (map (docScore (tokenizeAndNormalize keywords)) docs `using` parListChunk chunks rseq)
 
   docScore :: [String] -> Document -> (Document, Double)
   docScore keywords doc = (doc, foldl (+) 0 [keywordScore x doc | x <- keywords])
