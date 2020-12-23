@@ -1,31 +1,13 @@
 {-
-    TFIDF project: A single thread
 
-$ stack ghc -- --make -Wall -O TfidfSingle.hs
-Usage: Tfidf -f <filesname> <search-phase> or  TfidfSingle -d <files-path> <search-phase>
-
-"-d" flag reads each file of a directory into a Document.
-"-f" flag reads each line of a file into a Document.
-
--- Test a simple file
-$ ./Tfidf -f "../SampleTestFiles/file1.txt" "I love cat dog bird"
-[[("I love cat dog bird" fromList [("bird",1),("cat",1),("dog",1),("i",1),("love",1)] fromList ["bird","cat","dog","i",,"love"] fromList [("bird",1.0),("cat",0.3333333333333333),("dog",0.5),("i",0.2),("love",0.25)],2.283333333333333)]
--}
-
-{-
 
 New compilation/execution instructions for parallelism∷
 1) stack install parallel (only once)
 
 2) stack ghc -- -threaded --make -Wall -O Tfidf.hs -XDeriveAnyClass -XDeriveGeneric
 
-import System.Directory as Dir
-    ( doesDirectoryExist, doesFileExist, getDirectoryContents )
-    ( doesDirectoryExist, doesFileExist, getDirectoryContents ) -f "../SampleTestFiles/twitterCustomerSupportTruncated.txt" "airline delay"
-
 3a) ./Tfidf +RTS -N4 -RTS -f "../SampleTestFiles/twitterLargeStrings.txt" "airline delay"
-./Tfidf +RTS -N4 -RTS -f "../SampleTestFiles/100ktwitter.txt" "airline delay"
-3b) ./Tfidf +RTS -N4 -RTS -d "../SmallInputFiles" "author"
+
 -}
 
 import System.Environment(getArgs, getProgName)
@@ -38,7 +20,7 @@ import Data.Set as Set
 import Control.DeepSeq
 import Prelude
 import System.CPUTime
-import Control.Parallel.Strategies
+-- import Control.Parallel.Strategies
 
 
 main :: IO ()
@@ -71,21 +53,24 @@ main = do
        _ -> do
 
         -- Run single thread
-        {-let sortedDocumentsWithScore = runTfidfSingle args
+        let sortedDocumentsWithScore = runTfidfSingle args
         let results = fmap (Prelude.take 5) sortedDocumentsWithScore
         outputStr <- fmap show results
-        print $ outputStr -- shorten wikipedia-}
+        print $ outputStr -- shorten wikipedia
 
 
         -- Run parallel thread
-        --let sortedDocumentsWithScorePar = runTfidfParallel args
-        --let resultsPar = fmap (Prelude.take 5) sortedDocumentsWithScorePar
-        --outputStrPar <- fmap show resultsPar
-        --print $ outputStrPar  -- shorten wikipedia
+        let sortedDocumentsWithScorePar = runTfidfParallel args
+        let resultsPar = fmap (Prelude.take 5) sortedDocumentsWithScorePar
+        outputStrPar <- fmap show resultsPar
+        print $ outputStrPar  -- shorten wikipedia
+        
+        {--
         fileText <- readFile (args !! 1)
         let inputs = lines fileText
         let results = runTfidfNoPrint inputs (args !! 2)
         print $ results
+        --}
 
 
 runTfidfSingle :: [String] -> IO [(String, Double)]
@@ -120,7 +105,9 @@ runTfidfParallel args = do
     -- Sort the Documents with tfidf scores +parallelism
     docsWithTfidf `deepseq` fmap simplifyOutput (searchAndSortPar (args !! 2) docsWithTfidf)
 
+--} 
 
+{--
 runTfidfNoPrint :: [String] -> String -> [(String,Double)]
 runTfidfNoPrint texts keys = Prelude.take 5 (simplifyOutput (maxAndSort keys indexDocs))
         where
@@ -129,7 +116,7 @@ runTfidfNoPrint texts keys = Prelude.take 5 (simplifyOutput (maxAndSort keys ind
             globFreq = getGlobalDocumentFrequency documents allWords
             indexDocs = updateDocumentsWithTfIdfScore documents globFreq
 
-
+--}
 
 
 updateTfidf :: [Document] ->Set.Set String ->  IO [Document]
